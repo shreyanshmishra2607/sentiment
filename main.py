@@ -1,6 +1,3 @@
-# =========================================================================
-# main.py - Employee Attrition Analysis Pipeline (FIXED)
-# =========================================================================
 
 from src.predict_attrition import AttritionPredictor
 from src.llm_engagement import EmployeeEngagementAnalyzer

@@ -1,6 +1,3 @@
-# =========================================================================
-# src/llm_engagement.py - Standalone LLM-based Employee Engagement Analysis
-# =========================================================================
 
 import os
 from datetime import datetime
