@@ -43,7 +43,6 @@ class AttritionPredictor:
             "employee_index": employee_index,
             "attrition_probability": float(prob),
             "will_leave": bool(prediction),
-            "risk_level": self._get_risk_level(prob),
             "actual_attrition": int(employee_row['Actual_Attrition']),
             "features": employee_row[self.feature_columns].to_dict()
         }
@@ -105,7 +104,6 @@ class AttritionPredictor:
             "employee_name": employee_data["name"],
             "attrition_probability": float(prob),
             "will_leave": bool(prediction),
-            "risk_level": self._get_risk_level(prob),
             "simplified_input": employee_data,
             "features": full_features
         }
@@ -194,14 +192,3 @@ class AttritionPredictor:
             "total_employees": total_employees,
             "available_indices": f"0 to {total_employees - 1}"
         }
-    
-    def _get_risk_level(self, probability):
-        """Convert probability to risk level"""
-        if probability >= 0.8:
-            return 'Very High'
-        elif probability >= 0.6:
-            return 'High' 
-        elif probability >= 0.4:
-            return 'Medium'
-        else:
-            return 'Low'

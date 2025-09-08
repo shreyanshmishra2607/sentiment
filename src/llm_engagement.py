@@ -3,10 +3,13 @@
 # =========================================================================
 
 import os
+from datetime import datetime
+from pathlib import Path
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from langchain.schema import HumanMessage, SystemMessage
+from langchain.callbacks import StreamingStdOutCallbackHandler
 import json
 from typing import Dict, Any, List
 
@@ -21,60 +24,60 @@ class EmployeeEngagementAnalyzer:
         if not api_key:
             raise ValueError("GOOGLE_API_KEY not found in environment variables. Please set it in .env file or environment.")
         
-        # Initialize Gemini LLM
+        # Create outputs directory if it doesn't exist
+        self.outputs_dir = Path("outputs")
+        self.outputs_dir.mkdir(exist_ok=True)
+        
+        # Initialize Gemini LLM with streaming
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash",
+            model="gemini-1.5-flash",  # Updated model name
             google_api_key=api_key,
-            temperature=0.7
+            temperature=0.7,
+            streaming=True,
+            callbacks=[StreamingStdOutCallbackHandler()]
         )
         
         # Create system prompt
         self.system_prompt = SystemMessagePromptTemplate.from_template(
             """You are an expert HR Analytics consultant specializing in employee retention and engagement psychology. 
-            Your role is to analyze employee data and predict attrition risks, then provide actionable, personalized engagement strategies.
             
-            Focus on these key psychological and workplace factors:
-            - Work-life balance and stress management
-            - Career development and growth opportunities  
-            - Job satisfaction and role fulfillment
-            - Workplace relationships and team dynamics
-            - Compensation and recognition
-            - Management and leadership effectiveness
-            - Work environment and company culture
-            - Mental health and wellbeing factors
-            - Performance pressure and workload management
+            Your task is to analyze raw employee data and attrition probability to provide actionable insights.
             
-            Always provide:
-            1. Clear risk assessment explanation
-            2. Root cause analysis based on data patterns
-            3. Specific, actionable recommendations
-            4. Psychological insights into employee motivation
-            5. Preventive measures for retention
+            **Analysis Framework:**
+            - Assess attrition risk based on probability score
+            - Identify key psychological and workplace factors
+            - Provide specific, actionable recommendations
+            - Focus on human psychology behind the data
             
-            Keep responses professional, empathetic, and focused on human psychology behind the numbers."""
+            **Output Format Requirements:**
+            - Use clear headings with ##
+            - Use bullet points for lists
+            - Keep sections concise and focused
+            - Provide specific action items
+            - Write in professional, empathetic tone
+            
+            **Key Areas to Address:**
+            1. Risk Assessment
+            2. Key Contributing Factors  
+            3. Recommended Actions
+            4. Timeline for Implementation
+            5. Success Metrics"""
         )
         
         # Create human prompt template
         self.human_prompt = HumanMessagePromptTemplate.from_template(
-            """Please analyze this employee's attrition risk and provide engagement recommendations:
+            """## Employee Attrition Analysis Request
 
-            EMPLOYEE PROFILE:
-            {employee_summary}
+            **Employee:** {employee_name}
+            **Attrition Probability:** {attrition_probability:.2%}
+
+            **Raw Employee Data:**
+            {raw_data}
             
-            ATTRITION PREDICTION:
-            - Probability of Leaving: {attrition_probability:.2%}
-            - Risk Level: {risk_level}
-            - Model Prediction: {prediction_text}
-            
-            KEY DATA POINTS:
+            **Key Features:**
             {key_features}
             
-            Please provide a comprehensive analysis including:
-            1. Risk Assessment & Key Concerns
-            2. Psychological Factors Analysis  
-            3. Specific Engagement Strategies
-            4. Preventive Action Plan
-            5. Follow-up Recommendations"""
+            Please provide a comprehensive analysis and engagement strategy."""
         )
         
         # Combine prompts
@@ -83,46 +86,62 @@ class EmployeeEngagementAnalyzer:
             self.human_prompt
         ])
         
+        # Initialize session variables
+        self.current_session_file = None
+        self.chat_log = []
+        
     def analyze_attrition_risk(self, prediction_result: Dict[str, Any]) -> str:
         """Analyze employee attrition risk and provide engagement strategies"""
         try:
-            # Format employee data for LLM
-            employee_summary, key_features = self._format_employee_data(prediction_result)
+            # Extract employee info
+            employee_name = prediction_result.get('employee_name', 'Unknown Employee')
+            attrition_prob = prediction_result.get('attrition_probability', 0)
             
-            # Create prediction text
-            prediction_text = "Will likely leave" if prediction_result.get('will_leave', False) else "Will likely stay"
+            # Format employee data
+            raw_data, key_features = self._format_employee_data(prediction_result)
             
             # Create the prompt
             messages = self.chat_prompt.format_messages(
-                employee_summary=employee_summary,
-                attrition_probability=prediction_result.get('attrition_probability', 0),
-                risk_level=prediction_result.get('risk_level', 'Unknown'),
-                prediction_text=prediction_text,
+                employee_name=employee_name,
+                attrition_probability=attrition_prob,
+                raw_data=raw_data,
                 key_features=key_features
             )
             
-            # Get LLM response using invoke instead of deprecated __call__
+            print("🤖 AI Analysis (Streaming):")
+            print("-" * 50)
+            
+            # Get LLM response with streaming
             response = self.llm.invoke(messages)
-            return response.content
+            analysis_content = response.content
+            
+            print("\n" + "-" * 50)
+            
+            # Save to file
+            self._save_analysis_to_file(employee_name, attrition_prob, analysis_content)
+            
+            return analysis_content
             
         except Exception as e:
-            return f"Analysis failed: {str(e)}"
+            error_msg = f"Analysis failed: {str(e)}"
+            print(error_msg)
+            return error_msg
     
     def chat_with_llm(self, question: str, context: Dict[str, Any] = None) -> str:
         """Interactive chat with LLM for follow-up questions"""
         try:
             if context:
-                # Include context in the conversation
                 context_str = f"""
-                Previous Analysis Context:
-                - Risk Level: {context.get('risk_level', 'N/A')}
+                **Context:**
+                - Employee: {context.get('employee_name', 'N/A')}
                 - Attrition Probability: {context.get('attrition_probability', 0):.2%}
-                - Key Concerns: {context.get('key_concerns', 'See previous analysis')}
+                
+                **Previous Analysis Summary:** See previous conversation for detailed analysis.
                 """
                 
                 messages = [
-                    SystemMessage(content="You are an HR expert continuing a conversation about employee engagement and retention strategies."),
-                    HumanMessage(content=f"{context_str}\n\nQuestion: {question}")
+                    SystemMessage(content="You are an HR expert continuing a conversation about employee engagement. Provide concise, actionable responses."),
+                    HumanMessage(content=f"{context_str}\n\n**Question:** {question}")
                 ]
             else:
                 messages = [
@@ -130,136 +149,214 @@ class EmployeeEngagementAnalyzer:
                     HumanMessage(content=question)
                 ]
             
-            # Use invoke instead of deprecated __call__
+            print(f"\n💬 AI Response:")
+            print("-" * 30)
+            
+            # Use streaming for chat
             response = self.llm.invoke(messages)
-            return response.content
+            chat_response = response.content
+            
+            print("\n" + "-" * 30)
+            
+            # Log the chat
+            self._log_chat_interaction(question, chat_response)
+            
+            return chat_response
             
         except Exception as e:
-            return f"Chat failed: {str(e)}"
+            error_msg = f"Chat failed: {str(e)}"
+            print(error_msg)
+            return error_msg
     
     def _format_employee_data(self, prediction_result: Dict[str, Any]) -> tuple:
         """Format employee data for LLM analysis"""
         features = prediction_result.get('features', {})
         
-        # Extract key demographic info
-        employee_summary = self._extract_employee_summary(features)
+        # Format raw data
+        raw_data_parts = []
+        
+        # Basic demographics
+        if 'Age' in features:
+            raw_data_parts.append(f"Age (scaled): {features['Age']:.2f}")
+        if 'MonthlyIncome' in features:
+            raw_data_parts.append(f"Monthly Income (scaled): {features['MonthlyIncome']:.2f}")
+        if 'YearsAtCompany' in features:
+            raw_data_parts.append(f"Years at Company: {features['YearsAtCompany']:.2f}")
+        if 'TotalWorkingYears' in features:
+            raw_data_parts.append(f"Total Experience: {features['TotalWorkingYears']:.2f}")
+        if 'DistanceFromHome' in features:
+            raw_data_parts.append(f"Distance from Home (scaled): {features['DistanceFromHome']:.2f}")
+        
+        raw_data = "\n".join(raw_data_parts) if raw_data_parts else "Limited demographic data available"
         
         # Extract key workplace factors
         key_features = self._extract_key_features(features, prediction_result)
         
-        return employee_summary, key_features
-    
-    def _extract_employee_summary(self, features: Dict[str, Any]) -> str:
-        """Extract basic employee demographic information"""
-        summary_parts = []
-        
-        # Age
-        if 'Age' in features:
-            age_scaled = features['Age']
-            # Approximate age (assuming scaling, adjust if needed)
-            summary_parts.append(f"Age: {age_scaled:.2f} (scaled)")
-        
-        # Income
-        if 'MonthlyIncome' in features:
-            income_scaled = features['MonthlyIncome']
-            summary_parts.append(f"Monthly Income: {income_scaled:.2f} (scaled)")
-        
-        # Experience
-        if 'TotalWorkingYears' in features:
-            exp_scaled = features['TotalWorkingYears']
-            summary_parts.append(f"Total Experience: {exp_scaled:.2f} (scaled)")
-        
-        if 'YearsAtCompany' in features:
-            company_years = features['YearsAtCompany']
-            summary_parts.append(f"Years at Company: {company_years:.2f} (scaled)")
-        
-        # Department
-        dept_features = [k for k in features.keys() if k.startswith('Department_') and features[k] == 1]
-        if dept_features:
-            dept = dept_features[0].replace('Department_', '')
-            summary_parts.append(f"Department: {dept}")
-        
-        # Job Role
-        role_features = [k for k in features.keys() if k.startswith('JobRole_') and features[k] == 1]
-        if role_features:
-            role = role_features[0].replace('JobRole_', '')
-            summary_parts.append(f"Job Role: {role}")
-        
-        return " | ".join(summary_parts)
+        return raw_data, key_features
     
     def _extract_key_features(self, features: Dict[str, Any], prediction_result: Dict[str, Any] = None) -> str:
         """Extract key workplace factors for analysis"""
         key_factors = []
         
-        # Use simplified input if available
+        # Use simplified input if available (for custom entries)
         if prediction_result and 'simplified_input' in prediction_result:
             simple_data = prediction_result['simplified_input']
             
-            if 'WorkLifeBalance' in simple_data:
-                key_factors.append(f"Work-Life Balance: {simple_data['WorkLifeBalance']}")
-            if 'JobSatisfaction' in simple_data:
-                key_factors.append(f"Job Satisfaction: {simple_data['JobSatisfaction']}")
-            if 'EnvironmentSatisfaction' in simple_data:
-                key_factors.append(f"Environment Satisfaction: {simple_data['EnvironmentSatisfaction']}")
-            if 'OverTime' in simple_data:
-                key_factors.append(f"Overtime: {simple_data['OverTime']}")
-            if 'DistanceFromHome' in simple_data:
-                key_factors.append(f"Distance from Home: {simple_data['DistanceFromHome']} km")
-            if 'MaritalStatus' in simple_data:
-                key_factors.append(f"Marital Status: {simple_data['MaritalStatus']}")
-            if 'BusinessTravel' in simple_data:
-                key_factors.append(f"Business Travel: {simple_data['BusinessTravel']}")
+            for key, value in simple_data.items():
+                if key != 'name':  # Skip name field
+                    key_factors.append(f"{key.replace('_', ' ').title()}: {value}")
         else:
-            # Fallback to encoded features
+            # Extract from encoded features (for test data)
+            # Department
+            dept_features = [k for k in features.keys() if k.startswith('Department_') and features[k] == 1]
+            if dept_features:
+                dept = dept_features[0].replace('Department_', '')
+                key_factors.append(f"Department: {dept}")
+            
+            # Job Role
+            role_features = [k for k in features.keys() if k.startswith('JobRole_') and features[k] == 1]
+            if role_features:
+                role = role_features[0].replace('JobRole_', '')
+                key_factors.append(f"Job Role: {role}")
+                
+            # Work-Life Balance
             wlb_features = [k for k in features.keys() if k.startswith('WorkLifeBalance_') and features[k] == 1]
             if wlb_features:
                 wlb = wlb_features[0].replace('WorkLifeBalance_', '')
                 key_factors.append(f"Work-Life Balance: {wlb}")
             
+            # Job Satisfaction
             js_features = [k for k in features.keys() if k.startswith('JobSatisfaction_') and features[k] == 1]
             if js_features:
                 js = js_features[0].replace('JobSatisfaction_', '')
                 key_factors.append(f"Job Satisfaction: {js}")
             
+            # Environment Satisfaction
             env_features = [k for k in features.keys() if k.startswith('EnvironmentSatisfaction_') and features[k] == 1]
             if env_features:
                 env = env_features[0].replace('EnvironmentSatisfaction_', '')
                 key_factors.append(f"Environment Satisfaction: {env}")
             
-            if 'OverTime_Yes' in features and features['OverTime_Yes'] == 1:
-                key_factors.append("Overtime: Yes")
-            elif 'OverTime_Yes' in features:
-                key_factors.append("Overtime: No")
+            # Overtime
+            if 'OverTime_Yes' in features:
+                overtime_status = "Yes" if features['OverTime_Yes'] == 1 else "No"
+                key_factors.append(f"Overtime: {overtime_status}")
             
-            if 'DistanceFromHome' in features:
-                distance = features['DistanceFromHome']
-                key_factors.append(f"Distance from Home: {distance:.2f} (scaled)")
+            # Marital Status
+            marital_features = [k for k in features.keys() if k.startswith('MaritalStatus_') and features[k] == 1]
+            if marital_features:
+                marital = marital_features[0].replace('MaritalStatus_', '')
+                key_factors.append(f"Marital Status: {marital}")
+            
+            # Business Travel
+            travel_features = [k for k in features.keys() if k.startswith('BusinessTravel_') and features[k] == 1]
+            if travel_features:
+                travel = travel_features[0].replace('BusinessTravel_', '')
+                key_factors.append(f"Business Travel: {travel}")
         
-        return " | ".join(key_factors) if key_factors else "Limited feature information available"
+        return "\n".join(key_factors) if key_factors else "Limited feature information available"
     
-    def get_conversation_starter(self, risk_level: str) -> List[str]:
-        """Get suggested follow-up questions based on risk level"""
-        if risk_level.lower() in ['high', 'very high']:
+    def _save_analysis_to_file(self, employee_name: str, attrition_prob: float, analysis_content: str):
+        """Save analysis to markdown file"""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        employee_clean = employee_name.replace(" ", "_").replace("/", "_")
+        filename = f"employee_analysis_{employee_clean}_{timestamp}.md"
+        filepath = self.outputs_dir / filename
+        
+        # Create markdown content
+        markdown_content = f"""# Employee Attrition Analysis Report
+
+**Employee:** {employee_name}  
+**Analysis Date:** {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}  
+**Attrition Probability:** {attrition_prob:.2%}  
+
+---
+
+{analysis_content}
+
+---
+
+*Generated by Employee Attrition Analysis System*
+"""
+        
+        # Save to file
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(markdown_content)
+        
+        print(f"\n📁 Analysis saved to: {filepath}")
+        
+        # Set current session file for chat logging
+        self.current_session_file = filepath
+        self.chat_log = []
+    
+    def _log_chat_interaction(self, question: str, response: str):
+        """Log chat interactions to the current session file"""
+        if not self.current_session_file:
+            return
+        
+        # Add to chat log
+        chat_entry = {
+            'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            'question': question,
+            'response': response
+        }
+        self.chat_log.append(chat_entry)
+        
+        # Append to file
+        chat_section = f"""
+
+## Follow-up Chat
+
+"""
+        
+        for entry in self.chat_log:
+            chat_section += f"""
+### Question ({entry['timestamp']})
+{entry['question']}
+
+### Response
+{entry['response']}
+
+---
+"""
+        
+        # Read existing content and append chat
+        with open(self.current_session_file, 'r', encoding='utf-8') as f:
+            existing_content = f.read()
+        
+        # Remove previous chat section if exists
+        if "## Follow-up Chat" in existing_content:
+            existing_content = existing_content.split("## Follow-up Chat")[0]
+        
+        # Write updated content
+        with open(self.current_session_file, 'w', encoding='utf-8') as f:
+            f.write(existing_content + chat_section)
+        
+        print(f"💾 Chat logged to: {self.current_session_file}")
+    
+    def get_conversation_starter(self, attrition_probability: float) -> List[str]:
+        """Get suggested follow-up questions based on attrition probability"""
+        if attrition_probability >= 0.7:  # High risk (70%+)
             return [
-                "What immediate actions should we take?",
-                "How can we improve their work-life balance?",
-                "What career development opportunities might help?",
-                "Should we consider a salary review?",
-                "How can their manager better support them?"
+                "What immediate retention actions should we take?",
+                "How can we address their top concerns quickly?",
+                "What compensation adjustments might help?",
+                "Should we involve senior management?",
+                "What's the timeline for intervention?"
             ]
-        elif risk_level.lower() == 'medium':
+        elif attrition_probability >= 0.4:  # Medium risk (40-70%)
             return [
                 "What preventive measures should we implement?",
                 "How can we enhance their job satisfaction?",
-                "What training programs might benefit them?",
-                "How can we improve team dynamics?",
-                "What recognition strategies would work?"
+                "What development opportunities can we offer?",
+                "How can we improve their work environment?",
+                "What recognition strategies would be effective?"
             ]
-        else:  # Low risk
+        else:  # Low risk (<40%)
             return [
-                "How can we maintain their engagement?",
-                "What growth opportunities can we provide?",
-                "How can we leverage them as mentors?",
+                "How can we maintain their current engagement?",
+                "What growth opportunities should we provide?",
+                "How can they mentor others?",
                 "What new challenges might motivate them?",
-                "How can we recognize their contributions?"
+                "How can we leverage their strengths?"
             ]

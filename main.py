@@ -43,56 +43,61 @@ def main():
         # Custom data option
         prediction_result = predictor.predict_simplified_input()
     
-    # Display prediction results
+    # Display clean prediction results
     print("\n" + "=" * 50)
     print("🎯 PREDICTION RESULTS")
     print("=" * 50)
     print(f"Employee: {prediction_result.get('employee_name', 'Unknown')}")
     print(f"Attrition Probability: {prediction_result['attrition_probability']:.2%}")
-    print(f"Risk Level: {prediction_result['risk_level']}")
-    print(f"Prediction: {'Will likely leave' if prediction_result['will_leave'] else 'Will likely stay'}")
+    print(f"Model Prediction: {'Will likely leave' if prediction_result['will_leave'] else 'Will likely stay'}")
     
-    # Get LLM analysis
-    print("\n🤖 Analyzing with AI...")
-    analysis = analyzer.analyze_attrition_risk(prediction_result)
+    if 'actual_attrition' in prediction_result:
+        actual_status = "Left" if prediction_result['actual_attrition'] == 1 else "Stayed"
+        print(f"Actual Result: {actual_status}")
     
+    # Get LLM analysis with streaming
     print("\n" + "=" * 50)
     print("📋 AI ENGAGEMENT ANALYSIS")
     print("=" * 50)
-    print(analysis)
+    
+    analysis = analyzer.analyze_attrition_risk(prediction_result)
     
     # Interactive chat
     print("\n" + "=" * 50)
-    print("💬 FOLLOW-UP CHAT")
+    print("💬 FOLLOW-UP CONSULTATION")
     print("=" * 50)
     
-    # Show suggested questions
-    questions = analyzer.get_conversation_starter(prediction_result['risk_level'])
-    print("Suggested questions:")
+    # Show suggested questions based on probability
+    questions = analyzer.get_conversation_starter(prediction_result['attrition_probability'])
+    print("\n📝 Suggested Questions:")
     for i, q in enumerate(questions, 1):
-        print(f"{i}. {q}")
+        print(f"  {i}. {q}")
     
-    # Chat loop
+    # Chat context
     chat_context = {
-        'risk_level': prediction_result['risk_level'],
-        'attrition_probability': prediction_result['attrition_probability'],
-        'employee_name': prediction_result.get('employee_name', 'Employee')
+        'employee_name': prediction_result.get('employee_name', 'Employee'),
+        'attrition_probability': prediction_result['attrition_probability']
     }
     
-    print("\nType your questions (or 'quit' to exit):")
+    print("\n💡 Type your questions below (or 'quit' to exit):")
     
+    # Chat loop
     while True:
-        user_question = input("\nYou: ").strip()
-        
-        if user_question.lower() in ['quit', 'exit', 'bye']:
-            print("👋 Thank you for using Employee Attrition Analysis System!")
+        try:
+            user_question = input("\n❓ Your question: ").strip()
+            
+            if user_question.lower() in ['quit', 'exit', 'bye', 'q']:
+                print("\n👋 Session ended. Check the outputs folder for saved analysis!")
+                break
+            
+            if user_question:
+                analyzer.chat_with_llm(user_question, chat_context)
+            else:
+                print("Please enter a question or type 'quit' to exit")
+                
+        except KeyboardInterrupt:
+            print("\n\n👋 Session interrupted. Check the outputs folder for saved analysis!")
             break
-        
-        if user_question:
-            response = analyzer.chat_with_llm(user_question, chat_context)
-            print(f"\nAI: {response}")
-        else:
-            print("Please enter a question or 'quit' to exit")
 
 if __name__ == "__main__":
     main()
