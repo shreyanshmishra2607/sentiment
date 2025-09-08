@@ -38,7 +38,12 @@ def main():
 
     else:
         # Custom data option
-        prediction_result = predictor.predict_simplified_input()
+        employee_data = {}
+        for key, config in predictor.config["employee_info"].items():
+            value = input(f"{config['question']}: ")
+            employee_data[key] = value
+        prediction_result = predictor.predict_simplified_input(employee_data)
+
     
     # Display clean prediction results
     print("\n" + "=" * 50)

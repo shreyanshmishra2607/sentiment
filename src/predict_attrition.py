@@ -61,15 +61,12 @@ class AttritionPredictor:
         
         return result
     
-    def predict_simplified_input(self):
+    def predict_simplified_input(self,employee_data):
         """Collect simplified input and predict attrition"""
         print("\n=== SIMPLIFIED EMPLOYEE DATA COLLECTION ===")
         
         # Collect employee info
-        employee_data = {}
-        for key, config in self.config["employee_info"].items():
-            value = input(f"{config['question']}: ")
-            employee_data[key] = value
+       
         
         # Collect feature data
         for key, config in self.config["features"].items():
@@ -347,8 +344,12 @@ class AttritionPredictor:
         
         else:
             # Custom data option
-            prediction_result = self.predict_simplified_input()
-        
+            employee_data = {}
+            for key, config in self.config["employee_info"].items():
+                value = input(f"{config['question']}: ")
+                employee_data[key] = value
+            prediction_result = self.predict_simplified_input(employee_data)
+
         # Display results
         self.display_results(prediction_result)
     
