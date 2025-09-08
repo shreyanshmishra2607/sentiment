@@ -1,0 +1,88 @@
+{
+  "employee_info": {
+    "name": {
+      "type": "text",
+      "question": "Enter employee name",
+      "required": true,
+      "for_llm_only": true
+    }
+  },
+  "features": {
+    "Age": {
+      "type": "number",
+      "question": "Enter age",
+      "min": 18,
+      "max": 65,
+      "required": true
+    },
+    "MonthlyIncome": {
+      "type": "number", 
+      "question": "Enter monthly income",
+      "min": 1000,
+      "max": 50000,
+      "required": true
+    },
+    "YearsAtCompany": {
+      "type": "number",
+      "question": "Years at current company",
+      "min": 0,
+      "max": 40,
+      "required": true
+    },
+    "DistanceFromHome": {
+      "type": "number",
+      "question": "Distance from home to office (km)",
+      "min": 1,
+      "max": 50,
+      "required": true
+    },
+    "OverTime": {
+      "type": "choice",
+      "question": "Does employee work overtime?",
+      "options": ["Yes", "No"],
+      "required": true
+    },
+    "JobSatisfaction": {
+      "type": "choice",
+      "question": "Job satisfaction level",
+      "options": ["Low", "Medium", "High", "Very High"],
+      "required": true
+    },
+    "WorkLifeBalance": {
+      "type": "choice", 
+      "question": "Work-life balance rating",
+      "options": ["Poor", "Good", "Better", "Best"],
+      "required": true
+    },
+    "EnvironmentSatisfaction": {
+      "type": "choice",
+      "question": "Environment satisfaction level", 
+      "options": ["Low", "Medium", "High", "Very High"],
+      "required": true
+    },
+    "JobLevel": {
+      "type": "choice",
+      "question": "Job level",
+      "options": ["Junior Level", "Mid Level", "Senior Level", "Executive Level"],
+      "required": true
+    },
+    "Department": {
+      "type": "choice",
+      "question": "Department",
+      "options": ["Sales", "Research & Development", "Human Resources"],
+      "required": true
+    },
+    "MaritalStatus": {
+      "type": "choice",
+      "question": "Marital status",
+      "options": ["Single", "Married", "Divorced"],
+      "required": true
+    },
+    "BusinessTravel": {
+      "type": "choice",
+      "question": "Business travel frequency",
+      "options": ["Travel_Rarely", "Travel_Frequently", "Non-Travel"],
+      "required": true
+    }
+  }
+}
