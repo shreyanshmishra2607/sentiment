@@ -23,22 +23,23 @@ def main():
     choice = predictor.get_user_choice()
     
     # Get prediction
+# Get prediction
     if choice == 1:
-        # Test data option
-        test_info = predictor.get_test_data_info()
-        print(f"\nAvailable test employees: {test_info['available_indices']}")
+        # Test data option with random selection
+        import random
         
-        while True:
-            try:
-                index = int(input("Enter employee index: "))
-                prediction_result = predictor.predict_from_test_data(index)
-                if "error" not in prediction_result:
-                    break
-                else:
-                    print(prediction_result["error"])
-            except ValueError:
-                print("Please enter a valid number")
-    
+        test_info = predictor.get_test_data_info()
+        max_index = int(test_info['available_indices'].split(' to ')[1])
+        
+        # Randomly select an employee index
+        random_index = random.randint(0, max_index)
+        print(f"\nRandomly selected employee index: {random_index}")
+        
+        prediction_result = predictor.predict_from_test_data(random_index)
+        
+        # Display which employee was chosen
+        print(f"Analyzing Employee #{random_index} from test data")
+
     else:
         # Custom data option
         prediction_result = predictor.predict_simplified_input()
