@@ -1,5 +1,5 @@
 # =========================================================================
-# src/llm_engagement.py - LLM-based Employee Engagement Analysis
+# src/llm_engagement.py - Standalone LLM-based Employee Engagement Analysis
 # =========================================================================
 
 import os
@@ -9,9 +9,12 @@ from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from langchain.schema import HumanMessage, SystemMessage
-from langchain.callbacks import StreamingStdOutCallbackHandler
 import json
+import warnings
 from typing import Dict, Any, List
+
+# Suppress warnings
+warnings.filterwarnings("ignore", category=UserWarning)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -28,13 +31,11 @@ class EmployeeEngagementAnalyzer:
         self.outputs_dir = Path("outputs")
         self.outputs_dir.mkdir(exist_ok=True)
         
-        # Initialize Gemini LLM with streaming
+        # Initialize Gemini LLM (FIXED - removed streaming parameter)
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash",  # Updated model name
+            model="gemini-1.5-flash",
             google_api_key=api_key,
-            temperature=0.7,
-            streaming=True,
-            callbacks=[StreamingStdOutCallbackHandler()]
+            temperature=0.7
         )
         
         # Create system prompt
@@ -108,12 +109,15 @@ class EmployeeEngagementAnalyzer:
                 key_features=key_features
             )
             
-            print("🤖 AI Analysis (Streaming):")
+            print("🤖 AI Analysis:")
             print("-" * 50)
             
-            # Get LLM response with streaming
+            # Get LLM response
             response = self.llm.invoke(messages)
             analysis_content = response.content
+            
+            # Simple streaming effect (optional)
+            self._simulate_streaming(analysis_content)
             
             print("\n" + "-" * 50)
             
@@ -128,7 +132,7 @@ class EmployeeEngagementAnalyzer:
             return error_msg
     
     def chat_with_llm(self, question: str, context: Dict[str, Any] = None) -> str:
-        """Interactive chat with LLM for follow-up questions"""
+        """Interactive chat with LLM for follow-up questions (ENHANCED VERSION)"""
         try:
             if context:
                 context_str = f"""
@@ -139,22 +143,61 @@ class EmployeeEngagementAnalyzer:
                 **Previous Analysis Summary:** See previous conversation for detailed analysis.
                 """
                 
+                # Enhanced system message for more detailed responses
+                detailed_system_message = """You are an expert HR Analytics consultant specializing in employee retention and engagement psychology. 
+
+                **Response Guidelines:**
+                - Provide comprehensive, actionable responses (3-5 sentences minimum)
+                - Include 2-3 specific bullet points or recommendations when relevant
+                - Use professional but conversational tone
+                - Draw insights from HR best practices and psychology
+                - Structure responses with clear reasoning and practical steps
+                - Provide context and rationale for your recommendations
+                
+                **Response Format:**
+                - Start with a brief analysis or context
+                - Provide 2-3 specific actionable points
+                - End with implementation guidance or next steps
+                
+                Continue the conversation about employee engagement with detailed, helpful responses."""
+                
                 messages = [
-                    SystemMessage(content="You are an HR expert continuing a conversation about employee engagement. Provide concise, actionable responses."),
+                    SystemMessage(content=detailed_system_message),
                     HumanMessage(content=f"{context_str}\n\n**Question:** {question}")
                 ]
             else:
+                # Enhanced system message for general HR questions
+                detailed_system_message = """You are an expert HR Analytics consultant specializing in employee retention and engagement psychology.
+                
+                **Response Guidelines:**
+                - Provide comprehensive, detailed responses (3-5 sentences minimum)
+                - Include specific recommendations with 2-3 bullet points when applicable
+                - Use professional yet accessible language
+                - Draw from HR best practices and organizational psychology
+                - Provide practical implementation steps
+                - Give context and reasoning behind recommendations
+                
+                **Response Structure:**
+                - Brief context or analysis of the question
+                - 2-3 specific actionable recommendations
+                - Implementation guidance or next steps
+                
+                Provide detailed, actionable guidance on employee engagement and retention strategies."""
+                
                 messages = [
-                    SystemMessage(content="You are an HR expert specializing in employee engagement and retention strategies."),
+                    SystemMessage(content=detailed_system_message),
                     HumanMessage(content=question)
                 ]
             
             print(f"\n💬 AI Response:")
             print("-" * 30)
             
-            # Use streaming for chat
+            # Get response
             response = self.llm.invoke(messages)
             chat_response = response.content
+            
+            # Simple streaming effect
+            self._simulate_streaming(chat_response)
             
             print("\n" + "-" * 30)
             
@@ -167,6 +210,18 @@ class EmployeeEngagementAnalyzer:
             error_msg = f"Chat failed: {str(e)}"
             print(error_msg)
             return error_msg
+    
+    def _simulate_streaming(self, content: str):
+        """Simple streaming simulation for better UX"""
+        import time
+        import sys
+        
+        words = content.split(' ')
+        for i, word in enumerate(words):
+            print(word, end=' ', flush=True)
+            if i % 15 == 0 and i > 0:  # Add small delay every 15 words
+                time.sleep(0.08)
+        print()  # New line at the end
     
     def _format_employee_data(self, prediction_result: Dict[str, Any]) -> tuple:
         """Format employee data for LLM analysis"""
@@ -283,7 +338,7 @@ class EmployeeEngagementAnalyzer:
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(markdown_content)
         
-        print(f"\n📁 Analysis saved to: {filepath}")
+        print(f"\n📄 Analysis saved to: {filepath}")
         
         # Set current session file for chat logging
         self.current_session_file = filepath
@@ -360,3 +415,210 @@ class EmployeeEngagementAnalyzer:
                 "What new challenges might motivate them?",
                 "How can we leverage their strengths?"
             ]
+
+    def run_standalone_demo(self):
+        """Run a standalone demo of the LLM engagement analyzer"""
+        print("🤖 Employee Engagement Analyzer (Standalone Demo)")
+        print("=" * 60)
+        
+        # Create sample prediction result for demo
+        sample_result = {
+            "employee_name": "Demo Employee",
+            "attrition_probability": 0.75,
+            "will_leave": True,
+            "simplified_input": {
+                "name": "Demo Employee",
+                "Age": 28,
+                "MonthlyIncome": 4500,
+                "YearsAtCompany": 1,
+                "DistanceFromHome": 25,
+                "OverTime": "Yes",
+                "JobSatisfaction": "Low",
+                "WorkLifeBalance": "Poor",
+                "EnvironmentSatisfaction": "Low",
+                "JobLevel": "Junior Level",
+                "Department": "Sales",
+                "MaritalStatus": "Single",
+                "BusinessTravel": "Travel_Frequently"
+            },
+            "features": {}
+        }
+        
+        print("📊 Running analysis on demo employee data...")
+        print("=" * 60)
+        
+        # Analyze the sample data
+        analysis = self.analyze_attrition_risk(sample_result)
+        
+        # Interactive chat demo
+        print("\n" + "=" * 60)
+        print("💬 INTERACTIVE CHAT DEMO")
+        print("=" * 60)
+        
+        # Show suggested questions
+        questions = self.get_conversation_starter(sample_result['attrition_probability'])
+        print("\n🔍 Suggested Questions:")
+        for i, q in enumerate(questions, 1):
+            print(f"  {i}. {q}")
+        
+        # Chat context
+        chat_context = {
+            'employee_name': sample_result['employee_name'],
+            'attrition_probability': sample_result['attrition_probability']
+        }
+        
+        print("\n💡 Type your questions below (or 'quit' to exit):")
+        
+        # Chat loop
+        while True:
+            try:
+                user_question = input("\n➤ Your question: ").strip()
+                
+                if user_question.lower() in ['quit', 'exit', 'bye', 'q']:
+                    print("\n👋 Demo session ended. Check the outputs folder for saved analysis!")
+                    break
+                
+                if user_question:
+                    self.chat_with_llm(user_question, chat_context)
+                else:
+                    print("Please enter a question or type 'quit' to exit")
+                    
+            except KeyboardInterrupt:
+                print("\n\n👋 Demo interrupted. Check the outputs folder for saved analysis!")
+                break
+
+    def run_custom_analysis(self):
+        """Run analysis with custom employee data input"""
+        print("🤖 Employee Engagement Analyzer (Custom Analysis)")
+        print("=" * 60)
+        
+        # Get custom employee data
+        print("\n=== CUSTOM EMPLOYEE DATA ENTRY ===")
+        
+        # Simple data collection for demo
+        employee_name = input("Enter employee name: ")
+        
+        try:
+            attrition_prob = float(input("Enter attrition probability (0.0 to 1.0): "))
+            if not 0 <= attrition_prob <= 1:
+                attrition_prob = 0.5  # Default
+                print("Invalid probability, using 0.5")
+        except ValueError:
+            attrition_prob = 0.5
+            print("Invalid input, using default probability 0.5")
+        
+        # Create custom result structure
+        custom_result = {
+            "employee_name": employee_name,
+            "attrition_probability": attrition_prob,
+            "will_leave": attrition_prob >= 0.5,
+            "simplified_input": {
+                "name": employee_name,
+                # You can expand this to collect more data
+            },
+            "features": {}
+        }
+        
+        print(f"\n📊 Running analysis for {employee_name}...")
+        print("=" * 60)
+        
+        # Analyze the custom data
+        analysis = self.analyze_attrition_risk(custom_result)
+        
+        # Interactive chat
+        print("\n" + "=" * 60)
+        print("💬 FOLLOW-UP CONSULTATION")
+        print("=" * 60)
+        
+        # Show suggested questions
+        questions = self.get_conversation_starter(custom_result['attrition_probability'])
+        print("\n🔍 Suggested Questions:")
+        for i, q in enumerate(questions, 1):
+            print(f"  {i}. {q}")
+        
+        # Chat context
+        chat_context = {
+            'employee_name': custom_result['employee_name'],
+            'attrition_probability': custom_result['attrition_probability']
+        }
+        
+        print("\n💡 Type your questions below (or 'quit' to exit):")
+        
+        # Chat loop
+        while True:
+            try:
+                user_question = input("\n➤ Your question: ").strip()
+                
+                if user_question.lower() in ['quit', 'exit', 'bye', 'q']:
+                    print("\n👋 Session ended. Check the outputs folder for saved analysis!")
+                    break
+                
+                if user_question:
+                    self.chat_with_llm(user_question, chat_context)
+                else:
+                    print("Please enter a question or type 'quit' to exit")
+                    
+            except KeyboardInterrupt:
+                print("\n\n👋 Session interrupted. Check the outputs folder for saved analysis!")
+                break
+
+    def run_standalone(self):
+        """Main standalone runner with menu options"""
+        print("🤖 Employee Engagement Analyzer - Standalone Mode")
+        print("=" * 60)
+        print("1. Run Demo Analysis (with sample data)")
+        print("2. Run Custom Analysis (enter your own data)")
+        print("3. Chat Only Mode (general HR questions)")
+        
+        while True:
+            try:
+                choice = int(input("\nSelect option (1, 2, or 3): "))
+                if choice in [1, 2, 3]:
+                    break
+                else:
+                    print("Please select 1, 2, or 3")
+            except ValueError:
+                print("Please enter a valid number")
+        
+        if choice == 1:
+            self.run_standalone_demo()
+        elif choice == 2:
+            self.run_custom_analysis()
+        elif choice == 3:
+            self.run_chat_only_mode()
+
+    def run_chat_only_mode(self):
+        """Run in chat-only mode for general HR questions"""
+        print("💬 HR Consultant Chat Mode")
+        print("=" * 40)
+        print("Ask me anything about employee engagement, retention, or HR strategies!")
+        print("Type 'quit' to exit")
+        
+        while True:
+            try:
+                user_question = input("\n➤ Your HR question: ").strip()
+                
+                if user_question.lower() in ['quit', 'exit', 'bye', 'q']:
+                    print("\n👋 Chat session ended!")
+                    break
+                
+                if user_question:
+                    self.chat_with_llm(user_question)
+                else:
+                    print("Please enter a question or type 'quit' to exit")
+                    
+            except KeyboardInterrupt:
+                print("\n\n👋 Chat session interrupted!")
+                break
+
+
+# Standalone execution
+if __name__ == "__main__":
+    try:
+        analyzer = EmployeeEngagementAnalyzer()
+        analyzer.run_standalone()
+    except KeyboardInterrupt:
+        print("\n\n👋 Session interrupted by user.")
+    except Exception as e:
+        print(f"\n❌ Error: {e}")
+        print("Please check if GOOGLE_API_KEY is set in your .env file.")

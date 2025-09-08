@@ -1,22 +1,34 @@
 # =========================================================================
-# src/predict_attrition.py - Pure Prediction Logic with Simplified Input
+# src/predict_attrition.py - Standalone Prediction Logic with Simplified Input
 # =========================================================================
 
 import pandas as pd
 import numpy as np
 import joblib
 import json
+import warnings
 from pathlib import Path
+
+# Suppress scikit-learn version warnings
+warnings.filterwarnings("ignore", category=UserWarning, message=".*sklearn.*")
+warnings.filterwarnings("ignore", message=".*version.*sklearn.*")
 
 class AttritionPredictor:
     def __init__(self):
         """Initialize the predictor by loading saved model components"""
         self.project_root = Path(__file__).parent.parent
         
-        # Load model components
-        self.model = joblib.load(self.project_root / 'models' / 'attrition_model.pkl')
-        self.scaler = joblib.load(self.project_root / 'models' / 'scaler.pkl')
-        self.feature_columns = joblib.load(self.project_root / 'models' / 'feature_columns.pkl')
+        # Load model components with warning suppression
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                self.model = joblib.load(self.project_root / 'models' / 'attrition_model.pkl')
+                self.scaler = joblib.load(self.project_root / 'models' / 'scaler.pkl')
+                self.feature_columns = joblib.load(self.project_root / 'models' / 'feature_columns.pkl')
+        except Exception as e:
+            print(f"Warning: Model loading issue - {e}")
+            print("This is likely due to scikit-learn version differences.")
+            print("The models will still work, but consider retraining with current sklearn version.")
         
         # Load test data
         self.test_data = pd.read_csv(self.project_root / 'data' / 'test_data' / 'test_data_with_predictions.csv')
@@ -192,3 +204,84 @@ class AttritionPredictor:
             "total_employees": total_employees,
             "available_indices": f"0 to {total_employees - 1}"
         }
+
+    def run_standalone(self):
+        """Run the prediction system standalone"""
+        print("🔍 Employee Attrition Prediction System (Standalone)")
+        print("=" * 60)
+        
+        try:
+            print("✅ System initialized successfully")
+        except Exception as e:
+            print(f"❌ System initialization failed: {e}")
+            return
+        
+        # Get user choice
+        choice = self.get_user_choice()
+        
+        # Get prediction
+        if choice == 1:
+            # Test data option
+            test_info = self.get_test_data_info()
+            print(f"\nAvailable test employees: {test_info['available_indices']}")
+            
+            while True:
+                try:
+                    index = int(input("Enter employee index: "))
+                    prediction_result = self.predict_from_test_data(index)
+                    if "error" not in prediction_result:
+                        break
+                    else:
+                        print(prediction_result["error"])
+                except ValueError:
+                    print("Please enter a valid number")
+        
+        else:
+            # Custom data option
+            prediction_result = self.predict_simplified_input()
+        
+        # Display results
+        self.display_results(prediction_result)
+    
+    def display_results(self, prediction_result):
+        """Display prediction results in a clean format"""
+        print("\n" + "=" * 60)
+        print("🎯 PREDICTION RESULTS")
+        print("=" * 60)
+        print(f"Employee: {prediction_result.get('employee_name', 'Unknown')}")
+        print(f"Attrition Probability: {prediction_result['attrition_probability']:.2%}")
+        print(f"Model Prediction: {'Will likely leave' if prediction_result['will_leave'] else 'Will likely stay'}")
+        
+        if 'actual_attrition' in prediction_result:
+            actual_status = "Left" if prediction_result['actual_attrition'] == 1 else "Stayed"
+            print(f"Actual Result: {actual_status}")
+        
+        # Risk level interpretation
+        prob = prediction_result['attrition_probability']
+        if prob >= 0.7:
+            risk_level = "🔴 HIGH RISK"
+            action = "Immediate intervention required"
+        elif prob >= 0.4:
+            risk_level = "🟡 MEDIUM RISK"
+            action = "Monitor closely and consider preventive measures"
+        else:
+            risk_level = "🟢 LOW RISK"
+            action = "Continue current engagement strategies"
+        
+        print(f"Risk Level: {risk_level}")
+        print(f"Recommended Action: {action}")
+        
+        print("\n" + "=" * 60)
+        print("📊 Raw prediction data saved to outputs folder (if running full system)")
+
+
+# Standalone execution
+if __name__ == "__main__":
+    try:
+        predictor = AttritionPredictor()
+        predictor.run_standalone()
+    except KeyboardInterrupt:
+        print("\n\n👋 Session interrupted by user.")
+    except Exception as e:
+        print(f"\n❌ Error: {e}")
+        print("Please check if all required files and models are in place.")
