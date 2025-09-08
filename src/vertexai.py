@@ -1,203 +1,127 @@
-# =========================================================================
-# src/vertexai.py - Full Attrition + LLM API including main pipeline
-# =========================================================================
-
-import uvicorn
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import Dict, Any, Optional
+from typing import Optional
 import random
-import warnings
 
+# Import your existing modules
 from predict_attrition import AttritionPredictor
 from llm_engagement import EmployeeEngagementAnalyzer
 
-warnings.filterwarnings("ignore", category=UserWarning)
+app = FastAPI(title="Employee Attrition Analysis API")
 
-# --------------------------
 # Initialize components
-# --------------------------
-app = FastAPI(title="Employee Attrition + Engagement API")
 predictor = AttritionPredictor()
 analyzer = EmployeeEngagementAnalyzer()
 
-# ===========================
-# Request models
-# ===========================
 class EmployeeData(BaseModel):
-    name: Optional[str] = None
-    Age: Optional[float] = None
-    MonthlyIncome: Optional[float] = None
-    YearsAtCompany: Optional[float] = None
-    TotalWorkingYears: Optional[float] = None
-    DistanceFromHome: Optional[float] = None
-    OverTime: Optional[str] = None
-    Department: Optional[str] = None
-    JobLevel: Optional[str] = None
-    JobSatisfaction: Optional[str] = None
-    WorkLifeBalance: Optional[str] = None
-    EnvironmentSatisfaction: Optional[str] = None
-    MaritalStatus: Optional[str] = None
-    BusinessTravel: Optional[str] = None
-    JobRole: Optional[str] = None
+    # Required fields from simplified_features.json
+    name: str
+    Age: int
+    MonthlyIncome: float
+    YearsAtCompany: float
+    TotalWorkingYears: float
+    DistanceFromHome: float
+    OverTime: str
+    JobSatisfaction: str
+    WorkLifeBalance: str
+    EnvironmentSatisfaction: str
+    JobLevel: str
+    Department: str
+    MaritalStatus: str
+    BusinessTravel: str
+    Education: str
+    EducationField: str
+    Gender: str
+    JobInvolvement: str
+    JobRole: str
+    RelationshipSatisfaction: str
+    PerformanceRating: str
+    # Optional fields
+    YearsInCurrentRole: Optional[float] = None
+    YearsSinceLastPromotion: Optional[float] = None
+    YearsWithCurrManager: Optional[float] = None
+    TrainingTimesLastYear: Optional[int] = None
 
-
-class LLMAnalysisRequest(BaseModel):
-    prediction_result: Dict[str, Any]
-
-
-class LLMChatRequest(BaseModel):
-    question: str
-    context: Optional[Dict[str, Any]] = None
-
-
-class PipelineRequest(BaseModel):
-    test_index: Optional[int] = None
+class AnalysisRequest(BaseModel):
+    choice: int  # 1 for test data, 2 for custom
     employee_data: Optional[EmployeeData] = None
+    employee_index: Optional[int] = None
 
+class ChatRequest(BaseModel):
+    question: str
+    employee_name: str
+    attrition_probability: float
 
-# ===========================
-# Basic root
-# ===========================
-@app.get("/")
-def root():
-    return {"message": "Attrition Prediction API is live. Use /get_attrition or /pipeline."}
-
-
-# ===========================
-# Existing attrition prediction
-# ===========================
-@app.post("/get_attrition")
-def get_attrition(employee: EmployeeData = None, test_index: int = None):
-    try:
-        if test_index is not None:
-            result = predictor.predict_from_test_data(test_index)
-            if "error" in result:
-                raise HTTPException(status_code=404, detail=result["error"])
-            return result
-
-        if employee is not None:
-            emp_dict = employee.dict()
-            emp_dict = {k: v for k, v in emp_dict.items() if v is not None}
-            if not emp_dict:
-                raise HTTPException(status_code=400, detail="No employee data provided")
-            
-            full_features, llm_context = predictor._create_full_feature_vector(emp_dict)
-            scaled_data = predictor.scaler.transform([list(full_features.values())])
-            prob = predictor.model.predict_proba(scaled_data)[0, 1]
-            prediction = 1 if prob >= predictor.threshold else 0
-
-            response = {
-                "employee_name": emp_dict.get("name", "Unknown"),
-                "attrition_probability": float(prob),
-                "will_leave": bool(prediction),
-                "simplified_input": emp_dict,
-                "features": full_features,
-                "llm_context": llm_context
-            }
-            return response
-
-        raise HTTPException(status_code=400, detail="Provide either test_index or employee data")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# ===========================
-# Existing LLM routes
-# ===========================
-@app.post("/llm/analyze")
-def llm_analyze(request: LLMAnalysisRequest):
-    try:
-        prediction_result = request.prediction_result
-        if not prediction_result:
-            raise HTTPException(status_code=400, detail="prediction_result is required")
-        analysis_content = analyzer.analyze_attrition_risk(prediction_result)
-        return {"analysis": analysis_content, "prediction_result": prediction_result}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/llm/chat")
-def llm_chat(request: LLMChatRequest):
-    try:
-        if not request.question:
-            raise HTTPException(status_code=400, detail="question is required")
-        chat_response = analyzer.chat_with_llm(request.question, request.context)
-        return {"response": chat_response, "context": request.context}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# ===========================
-# NEW: Main pipeline route
-# ===========================
-@app.post("/pipeline")
-def pipeline(request: PipelineRequest):
-    """
-    Full pipeline: predict attrition -> run LLM engagement analysis -> return context for chat
-    """
-    try:
-        # Step 1: Prediction
-        if request.test_index is not None:
-            prediction_result = predictor.predict_from_test_data(request.test_index)
-            if "error" in prediction_result:
-                raise HTTPException(status_code=404, detail=prediction_result["error"])
-        elif request.employee_data is not None:
-            emp_dict = request.employee_data.dict()
-            emp_dict = {k: v for k, v in emp_dict.items() if v is not None}
-            if not emp_dict:
-                raise HTTPException(status_code=400, detail="No employee data provided")
-            
-            full_features, llm_context = predictor._create_full_feature_vector(emp_dict)
-            scaled_data = predictor.scaler.transform([list(full_features.values())])
-            prob = predictor.model.predict_proba(scaled_data)[0, 1]
-            prediction = 1 if prob >= predictor.threshold else 0
-            
-            prediction_result = {
-                "employee_name": emp_dict.get("name", "Unknown"),
-                "attrition_probability": float(prob),
-                "will_leave": bool(prediction),
-                "simplified_input": emp_dict,
-                "features": full_features,
-                "llm_context": llm_context
-            }
+@app.post("/analyze")
+def analyze_employee(request: AnalysisRequest):
+    """Main analysis pipeline - replicates main.py logic exactly"""
+    
+    # Step 1: Get prediction based on choice
+    if request.choice == 1:
+        # Test data option
+        if request.employee_index is None:
+            # Random selection like main.py
+            test_info = predictor.get_test_data_info()
+            max_index = test_info['total_employees'] - 1
+            employee_index = random.randint(0, max_index)
         else:
-            raise HTTPException(status_code=400, detail="Provide either test_index or employee_data")
-
-        # Step 2: LLM Analysis
-        analysis_content = analyzer.analyze_attrition_risk(prediction_result)
-
-        # Step 3: Prepare chat context
-        chat_context = {
-            "employee_name": prediction_result.get("employee_name", "Employee"),
-            "attrition_probability": prediction_result["attrition_probability"]
-        }
-
-        return {
-            "prediction_result": prediction_result,
-            "analysis": analysis_content,
-            "chat_context": chat_context
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/pipeline/chat")
-def pipeline_chat(request: LLMChatRequest):
-    """
-    Follow-up chat based on previous pipeline context
-    """
+            employee_index = request.employee_index
+            
+        prediction_result = predictor.predict_from_test_data(employee_index)
+        
+        if "error" in prediction_result:
+            raise HTTPException(status_code=404, detail=prediction_result["error"])
+            
+    elif request.choice == 2:
+        # Custom data option
+        if not request.employee_data:
+            raise HTTPException(status_code=400, detail="Employee data required for choice 2")
+        
+        employee_dict = request.employee_data.dict()
+        prediction_result = predictor.predict_simplified_input(employee_dict)
+    else:
+        raise HTTPException(status_code=400, detail="Choice must be 1 or 2")
+    
+    # Step 2: Get LLM analysis
     try:
-        if not request.question:
-            raise HTTPException(status_code=400, detail="question is required")
-        chat_response = analyzer.chat_with_llm(request.question, request.context)
-        return {"response": chat_response, "context": request.context}
+        llm_analysis = analyzer.analyze_attrition_risk(prediction_result)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"LLM analysis failed: {str(e)}")
+    
+    # Step 3: Get suggested questions
+    suggested_questions = analyzer.get_conversation_starter(prediction_result['attrition_probability'])
+    
+    return {
+        "prediction": {
+            "employee_name": prediction_result.get('employee_name'),
+            "attrition_probability": prediction_result['attrition_probability'],
+            "will_leave": prediction_result['will_leave'],
+            "actual_attrition": prediction_result.get('actual_attrition')
+        },
+        "analysis": llm_analysis,
+        "suggested_questions": suggested_questions
+    }
 
+@app.post("/chat")
+def chat_followup(request: ChatRequest):
+    """Chat with AI consultant - replicates chat loop from main.py"""
+    
+    context = {
+        'employee_name': request.employee_name,
+        'attrition_probability': request.attrition_probability
+    }
+    
+    try:
+        response = analyzer.chat_with_llm(request.question, context)
+        return {"response": response}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Chat failed: {str(e)}")
 
-# ===========================
-# Run locally
-# ===========================
+@app.get("/test-info")
+def get_test_info():
+    """Get available test data info"""
+    return predictor.get_test_data_info()
+
 if __name__ == "__main__":
-    uvicorn.run("vertexai:app", host="0.0.0.0", port=8080, reload=True)
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

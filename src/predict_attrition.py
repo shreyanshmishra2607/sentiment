@@ -69,58 +69,58 @@ class AttritionPredictor:
        
         
         # Collect feature data
-        for key, config in self.config["features"].items():
-            if config["type"] == "number":
-                while True:
-                    try:
-                        if config.get("required", True):
-                            value = float(input(f"{config['question']}: "))
-                        else:
-                            user_input = input(f"{config['question']} (optional, press Enter to skip): ")
-                            if user_input.strip() == "":
-                                # Set default values for optional fields
-                                default_values = {
-                                    "YearsInCurrentRole": 2,
-                                    "YearsSinceLastPromotion": 1,
-                                    "YearsWithCurrManager": 2,
-                                    "TrainingTimesLastYear": 2
-                                }
-                                value = default_values.get(key, 0)
-                                print(f"Using default value: {value}")
-                            else:
-                                value = float(user_input)
+        # for key, config in self.config["features"].items():
+        #     if config["type"] == "number":
+        #         while True:
+        #             try:
+        #                 if config.get("required", True):
+        #                     value = float(input(f"{config['question']}: "))
+        #                 else:
+        #                     user_input = input(f"{config['question']} (optional, press Enter to skip): ")
+        #                     if user_input.strip() == "":
+        #                         # Set default values for optional fields
+        #                         default_values = {
+        #                             "YearsInCurrentRole": 2,
+        #                             "YearsSinceLastPromotion": 1,
+        #                             "YearsWithCurrManager": 2,
+        #                             "TrainingTimesLastYear": 2
+        #                         }
+        #                         value = default_values.get(key, 0)
+        #                         print(f"Using default value: {value}")
+        #                     else:
+        #                         value = float(user_input)
                         
-                        if config.get("min") and value < config["min"]:
-                            print(f"Value must be >= {config['min']}")
-                            continue
-                        if config.get("max") and value > config["max"]:
-                            print(f"Value must be <= {config['max']}")
-                            continue
-                        employee_data[key] = value
-                        break
-                    except ValueError:
-                        print("Please enter a valid number")
+        #                 if config.get("min") and value < config["min"]:
+        #                     print(f"Value must be >= {config['min']}")
+        #                     continue
+        #                 if config.get("max") and value > config["max"]:
+        #                     print(f"Value must be <= {config['max']}")
+        #                     continue
+        #                 employee_data[key] = value
+        #                 break
+        #             except ValueError:
+        #                 print("Please enter a valid number")
             
-            elif config["type"] == "choice_with_other":
-                print(f"{config['question']}")
-                for i, option in enumerate(config["options"], 1):
-                    print(f"{i}. {option}")
-                print(f"{len(config['options']) + 1}. Other (specify)")
+        #     elif config["type"] == "choice_with_other":
+        #         print(f"{config['question']}")
+        #         for i, option in enumerate(config["options"], 1):
+        #             print(f"{i}. {option}")
+        #         print(f"{len(config['options']) + 1}. Other (specify)")
                 
-                while True:
-                    try:
-                        choice = int(input("Select option (number): "))
-                        if 1 <= choice <= len(config["options"]):
-                            employee_data[key] = config["options"][choice - 1]
-                            break
-                        elif choice == len(config["options"]) + 1:
-                            custom_value = input("Please specify: ")
-                            employee_data[key] = f"OTHER: {custom_value}"
-                            break
-                        else:
-                            print("Invalid choice")
-                    except ValueError:
-                        print("Please enter a valid number")
+        #         while True:
+        #             try:
+        #                 choice = int(input("Select option (number): "))
+        #                 if 1 <= choice <= len(config["options"]):
+        #                     employee_data[key] = config["options"][choice - 1]
+        #                     break
+        #                 elif choice == len(config["options"]) + 1:
+        #                     custom_value = input("Please specify: ")
+        #                     employee_data[key] = f"OTHER: {custom_value}"
+        #                     break
+        #                 else:
+        #                     print("Invalid choice")
+        #             except ValueError:
+        #                 print("Please enter a valid number")
         
         # Convert to full feature vector
         full_features, llm_context = self._create_full_feature_vector(employee_data)
