@@ -29,6 +29,13 @@
       "max": 40,
       "required": true
     },
+    "TotalWorkingYears": {
+      "type": "number",
+      "question": "Total working years (experience)",
+      "min": 0,
+      "max": 45,
+      "required": true
+    },
     "DistanceFromHome": {
       "type": "number",
       "question": "Distance from home to office (km)",
@@ -37,52 +44,122 @@
       "required": true
     },
     "OverTime": {
-      "type": "choice",
+      "type": "choice_with_other",
       "question": "Does employee work overtime?",
       "options": ["Yes", "No"],
       "required": true
     },
     "JobSatisfaction": {
-      "type": "choice",
+      "type": "choice_with_other",
       "question": "Job satisfaction level",
       "options": ["Low", "Medium", "High", "Very High"],
       "required": true
     },
     "WorkLifeBalance": {
-      "type": "choice", 
+      "type": "choice_with_other", 
       "question": "Work-life balance rating",
-      "options": ["Poor", "Good", "Better", "Best"],
+      "options": ["Bad", "Good", "Better", "Best"],
       "required": true
     },
     "EnvironmentSatisfaction": {
-      "type": "choice",
+      "type": "choice_with_other",
       "question": "Environment satisfaction level", 
       "options": ["Low", "Medium", "High", "Very High"],
       "required": true
     },
     "JobLevel": {
-      "type": "choice",
+      "type": "choice_with_other",
       "question": "Job level",
-      "options": ["Junior Level", "Mid Level", "Senior Level", "Executive Level"],
+      "options": ["Entry Level", "Junior Level", "Mid Level", "Senior Level", "Executive Level"],
       "required": true
     },
     "Department": {
-      "type": "choice",
+      "type": "choice_with_other",
       "question": "Department",
       "options": ["Sales", "Research & Development", "Human Resources"],
       "required": true
     },
     "MaritalStatus": {
-      "type": "choice",
+      "type": "choice_with_other",
       "question": "Marital status",
       "options": ["Single", "Married", "Divorced"],
       "required": true
     },
     "BusinessTravel": {
-      "type": "choice",
+      "type": "choice_with_other",
       "question": "Business travel frequency",
       "options": ["Travel_Rarely", "Travel_Frequently", "Non-Travel"],
       "required": true
+    },
+    "Education": {
+      "type": "choice_with_other",
+      "question": "Education level",
+      "options": ["Below College", "College", "Bachelor", "Master", "Doctor"],
+      "required": true
+    },
+    "EducationField": {
+      "type": "choice_with_other",
+      "question": "Field of education",
+      "options": ["Life Sciences", "Medical", "Marketing", "Technical Degree", "Human Resources", "Other"],
+      "required": true
+    },
+    "Gender": {
+      "type": "choice_with_other",
+      "question": "Gender",
+      "options": ["Male", "Female"],
+      "required": true
+    },
+    "JobInvolvement": {
+      "type": "choice_with_other",
+      "question": "Job involvement level",
+      "options": ["Low", "Medium", "High", "Very High"],
+      "required": true
+    },
+    "JobRole": {
+      "type": "choice_with_other",
+      "question": "Job role",
+      "options": ["Sales Executive", "Research Scientist", "Laboratory Technician", "Manufacturing Director", "Healthcare Representative", "Manager", "Sales Representative", "Research Director", "Human Resources"],
+      "required": true
+    },
+    "RelationshipSatisfaction": {
+      "type": "choice_with_other",
+      "question": "Relationship satisfaction with colleagues",
+      "options": ["Low", "Medium", "High", "Very High"],
+      "required": true
+    },
+    "PerformanceRating": {
+      "type": "choice_with_other",
+      "question": "Performance rating",
+      "options": ["Excellent", "Outstanding"],
+      "required": true
+    },
+    "YearsInCurrentRole": {
+      "type": "number",
+      "question": "Years in current role",
+      "min": 0,
+      "max": 20,
+      "required": false
+    },
+    "YearsSinceLastPromotion": {
+      "type": "number",
+      "question": "Years since last promotion",
+      "min": 0,
+      "max": 15,
+      "required": false
+    },
+    "YearsWithCurrManager": {
+      "type": "number",
+      "question": "Years with current manager",
+      "min": 0,
+      "max": 17,
+      "required": false
+    },
+    "TrainingTimesLastYear": {
+      "type": "number",
+      "question": "Number of training sessions attended last year",
+      "min": 0,
+      "max": 10,
+      "required": false
     }
   }
 }

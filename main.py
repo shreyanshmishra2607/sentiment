@@ -1,5 +1,5 @@
 # =========================================================================
-# main.py - Employee Attrition Analysis Pipeline
+# main.py - Employee Attrition Analysis Pipeline (FIXED)
 # =========================================================================
 
 from src.predict_attrition import AttritionPredictor
@@ -23,7 +23,6 @@ def main():
     choice = predictor.get_user_choice()
     
     # Get prediction
-# Get prediction
     if choice == 1:
         # Test data option with random selection
         import random
@@ -61,44 +60,53 @@ def main():
     print("📋 AI ENGAGEMENT ANALYSIS")
     print("=" * 50)
     
-    analysis = analyzer.analyze_attrition_risk(prediction_result)
+    try:
+        analysis = analyzer.analyze_attrition_risk(prediction_result)
+    except Exception as e:
+        print(f"Analysis failed: {str(e)}")
+        analysis = None
     
     # Interactive chat
     print("\n" + "=" * 50)
     print("💬 FOLLOW-UP CONSULTATION")
     print("=" * 50)
     
-    # Show suggested questions based on probability
-    questions = analyzer.get_conversation_starter(prediction_result['attrition_probability'])
-    print("\n📝 Suggested Questions:")
-    for i, q in enumerate(questions, 1):
-        print(f"  {i}. {q}")
-    
-    # Chat context
-    chat_context = {
-        'employee_name': prediction_result.get('employee_name', 'Employee'),
-        'attrition_probability': prediction_result['attrition_probability']
-    }
-    
-    print("\n💡 Type your questions below (or 'quit' to exit):")
-    
-    # Chat loop
-    while True:
-        try:
-            user_question = input("\n❓ Your question: ").strip()
-            
-            if user_question.lower() in ['quit', 'exit', 'bye', 'q']:
-                print("\n👋 Session ended. Check the outputs folder for saved analysis!")
-                break
-            
-            if user_question:
-                analyzer.chat_with_llm(user_question, chat_context)
-            else:
-                print("Please enter a question or type 'quit' to exit")
+    try:
+        # Show suggested questions based on probability
+        questions = analyzer.get_conversation_starter(prediction_result['attrition_probability'])
+        print("\n💡 Suggested Questions:")
+        for i, q in enumerate(questions, 1):
+            print(f"  {i}. {q}")
+        
+        # Chat context
+        chat_context = {
+            'employee_name': prediction_result.get('employee_name', 'Employee'),
+            'attrition_probability': prediction_result['attrition_probability']
+        }
+        
+        print("\n💡 Type your questions below (or 'quit' to exit):")
+        
+        # Chat loop
+        while True:
+            try:
+                user_question = input("\n➤ Your question: ").strip()
                 
-        except KeyboardInterrupt:
-            print("\n\n👋 Session interrupted. Check the outputs folder for saved analysis!")
-            break
+                if user_question.lower() in ['quit', 'exit', 'bye', 'q']:
+                    print("\n👋 Session ended. Check the outputs folder for saved analysis!")
+                    break
+                
+                if user_question:
+                    analyzer.chat_with_llm(user_question, chat_context)
+                else:
+                    print("Please enter a question or type 'quit' to exit")
+                    
+            except KeyboardInterrupt:
+                print("\n\n👋 Session interrupted. Check the outputs folder for saved analysis!")
+                break
+                
+    except Exception as e:
+        print(f"Chat system error: {str(e)}")
+        print("Please check if GOOGLE_API_KEY is set in your .env file.")
 
 if __name__ == "__main__":
     main()

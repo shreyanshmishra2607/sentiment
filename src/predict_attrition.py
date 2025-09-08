@@ -1,5 +1,5 @@
 # =========================================================================
-# src/predict_attrition.py - Standalone Prediction Logic with Simplified Input
+# src/predict_attrition.py - Standalone Prediction Logic with Enhanced Features
 # =========================================================================
 
 import pandas as pd
@@ -76,7 +76,23 @@ class AttritionPredictor:
             if config["type"] == "number":
                 while True:
                     try:
-                        value = float(input(f"{config['question']}: "))
+                        if config.get("required", True):
+                            value = float(input(f"{config['question']}: "))
+                        else:
+                            user_input = input(f"{config['question']} (optional, press Enter to skip): ")
+                            if user_input.strip() == "":
+                                # Set default values for optional fields
+                                default_values = {
+                                    "YearsInCurrentRole": 2,
+                                    "YearsSinceLastPromotion": 1,
+                                    "YearsWithCurrManager": 2,
+                                    "TrainingTimesLastYear": 2
+                                }
+                                value = default_values.get(key, 0)
+                                print(f"Using default value: {value}")
+                            else:
+                                value = float(user_input)
+                        
                         if config.get("min") and value < config["min"]:
                             print(f"Value must be >= {config['min']}")
                             continue
@@ -88,10 +104,11 @@ class AttritionPredictor:
                     except ValueError:
                         print("Please enter a valid number")
             
-            elif config["type"] == "choice":
+            elif config["type"] == "choice_with_other":
                 print(f"{config['question']}")
                 for i, option in enumerate(config["options"], 1):
                     print(f"{i}. {option}")
+                print(f"{len(config['options']) + 1}. Other (specify)")
                 
                 while True:
                     try:
@@ -99,87 +116,179 @@ class AttritionPredictor:
                         if 1 <= choice <= len(config["options"]):
                             employee_data[key] = config["options"][choice - 1]
                             break
+                        elif choice == len(config["options"]) + 1:
+                            custom_value = input("Please specify: ")
+                            employee_data[key] = f"OTHER: {custom_value}"
+                            break
                         else:
                             print("Invalid choice")
                     except ValueError:
                         print("Please enter a valid number")
         
         # Convert to full feature vector
-        full_features = self._create_full_feature_vector(employee_data)
+        full_features, llm_context = self._create_full_feature_vector(employee_data)
         
         # Scale and predict
         scaled_data = self.scaler.transform([list(full_features.values())])
         prob = self.model.predict_proba(scaled_data)[0, 1]
         prediction = 1 if prob >= self.threshold else 0
-        
+
         result = {
             "employee_name": employee_data["name"],
             "attrition_probability": float(prob),
             "will_leave": bool(prediction),
             "simplified_input": employee_data,
-            "features": full_features
+            "features": full_features,
+            "llm_context": llm_context
         }
         
         return result
     
     def _create_full_feature_vector(self, simplified_data):
-        """Convert simplified input to full 135-feature vector"""
+        """Convert simplified input to full feature vector, separating model features from LLM context"""
         full_features = {col: 0.0 for col in self.feature_columns}
+        llm_context = {}
         
-        # Map numerical features (normalize using test data stats)
+        # Map numerical features (normalize using reasonable estimates)
         if "Age" in simplified_data:
-            # Simple normalization - you can improve this
-            full_features["Age"] = (simplified_data["Age"] - 30) / 15  # rough scaling
+            # Normalize age (assuming mean ~35, std ~10)
+            full_features["Age"] = (simplified_data["Age"] - 35) / 10
         
         if "MonthlyIncome" in simplified_data:
+            # Normalize income (assuming mean ~6000, std ~4000)
             full_features["MonthlyIncome"] = (simplified_data["MonthlyIncome"] - 6000) / 4000
             
         if "YearsAtCompany" in simplified_data:
+            # Normalize years at company
             full_features["YearsAtCompany"] = (simplified_data["YearsAtCompany"] - 5) / 5
+        
+        if "TotalWorkingYears" in simplified_data:
+            # Normalize total working years
+            full_features["TotalWorkingYears"] = (simplified_data["TotalWorkingYears"] - 10) / 8
             
         if "DistanceFromHome" in simplified_data:
+            # Normalize distance
             full_features["DistanceFromHome"] = (simplified_data["DistanceFromHome"] - 10) / 10
         
+        # Handle optional numerical features
+        optional_numeric_mappings = {
+            "YearsInCurrentRole": ("YearsInCurrentRole", 2, 3),
+            "YearsSinceLastPromotion": ("YearsSinceLastPromotion", 2, 3),
+            "YearsWithCurrManager": ("YearsWithCurrManager", 2, 3),
+            "TrainingTimesLastYear": ("TrainingTimesLastYear", 2, 2)
+        }
+        
+        for key, (feature_name, mean, std) in optional_numeric_mappings.items():
+            if key in simplified_data and feature_name in full_features:
+                full_features[feature_name] = (simplified_data[key] - mean) / std
+        
         # Map categorical features (one-hot encoding)
-        if simplified_data.get("OverTime") == "Yes":
-            full_features["OverTime_Yes"] = 1
+        for key, value in simplified_data.items():
+            if key == "name":  # Skip name field
+                continue
+                
+            if isinstance(value, str) and value.startswith("OTHER: "):
+                # Store custom values for LLM context only
+                llm_context[key] = value.replace("OTHER: ", "")
+                continue
             
-        if simplified_data.get("Department"):
-            dept_col = f"Department_{simplified_data['Department']}"
-            if dept_col in full_features:
-                full_features[dept_col] = 1
+            # Handle known categorical values
+            categorical_mappings = {
+                "OverTime": {"Yes": "OverTime_Yes"},
+                "Department": {
+                    "Sales": "Department_Sales",
+                    "Research & Development": "Department_Research & Development", 
+                    "Human Resources": "Department_Human Resources"
+                },
+                "JobLevel": {
+                    "Entry Level": "JobLevel_1",
+                    "Junior Level": "JobLevel_2", 
+                    "Mid Level": "JobLevel_3",
+                    "Senior Level": "JobLevel_4",
+                    "Executive Level": "JobLevel_5"
+                },
+                "JobSatisfaction": {
+                    "Low": "JobSatisfaction_1",
+                    "Medium": "JobSatisfaction_2",
+                    "High": "JobSatisfaction_3", 
+                    "Very High": "JobSatisfaction_4"
+                },
+                "WorkLifeBalance": {
+                    "Bad": "WorkLifeBalance_1",
+                    "Good": "WorkLifeBalance_2",
+                    "Better": "WorkLifeBalance_3",
+                    "Best": "WorkLifeBalance_4"
+                },
+                "EnvironmentSatisfaction": {
+                    "Low": "EnvironmentSatisfaction_1",
+                    "Medium": "EnvironmentSatisfaction_2", 
+                    "High": "EnvironmentSatisfaction_3",
+                    "Very High": "EnvironmentSatisfaction_4"
+                },
+                "MaritalStatus": {
+                    "Single": "MaritalStatus_Single",
+                    "Married": "MaritalStatus_Married",
+                    "Divorced": "MaritalStatus_Divorced"
+                },
+                "BusinessTravel": {
+                    "Travel_Rarely": "BusinessTravel_Travel_Rarely",
+                    "Travel_Frequently": "BusinessTravel_Travel_Frequently",
+                    "Non-Travel": "BusinessTravel_Non-Travel"
+                },
+                "Education": {
+                    "Below College": "Education_1",
+                    "College": "Education_2",
+                    "Bachelor": "Education_3",
+                    "Master": "Education_4", 
+                    "Doctor": "Education_5"
+                },
+                "EducationField": {
+                    "Life Sciences": "EducationField_Life Sciences",
+                    "Medical": "EducationField_Medical",
+                    "Marketing": "EducationField_Marketing",
+                    "Technical Degree": "EducationField_Technical Degree",
+                    "Human Resources": "EducationField_Human Resources",
+                    "Other": "EducationField_Other"
+                },
+                "Gender": {
+                    "Male": "Gender_Male",
+                    "Female": "Gender_Female"
+                },
+                "JobInvolvement": {
+                    "Low": "JobInvolvement_1",
+                    "Medium": "JobInvolvement_2",
+                    "High": "JobInvolvement_3",
+                    "Very High": "JobInvolvement_4"
+                },
+                "JobRole": {
+                    "Sales Executive": "JobRole_Sales Executive",
+                    "Research Scientist": "JobRole_Research Scientist",
+                    "Laboratory Technician": "JobRole_Laboratory Technician",
+                    "Manufacturing Director": "JobRole_Manufacturing Director",
+                    "Healthcare Representative": "JobRole_Healthcare Representative",
+                    "Manager": "JobRole_Manager",
+                    "Sales Representative": "JobRole_Sales Representative", 
+                    "Research Director": "JobRole_Research Director",
+                    "Human Resources": "JobRole_Human Resources"
+                },
+                "RelationshipSatisfaction": {
+                    "Low": "RelationshipSatisfaction_1",
+                    "Medium": "RelationshipSatisfaction_2",
+                    "High": "RelationshipSatisfaction_3",
+                    "Very High": "RelationshipSatisfaction_4"
+                },
+                "PerformanceRating": {
+                    "Excellent": "PerformanceRating_3",
+                    "Outstanding": "PerformanceRating_4"
+                }
+            }
+            
+            if key in categorical_mappings and value in categorical_mappings[key]:
+                feature_col = categorical_mappings[key][value]
+                if feature_col in full_features:
+                    full_features[feature_col] = 1
         
-        if simplified_data.get("JobLevel"):
-            level_col = f"JobLevel_{simplified_data['JobLevel']}"
-            if level_col in full_features:
-                full_features[level_col] = 1
-                
-        if simplified_data.get("JobSatisfaction"):
-            sat_col = f"JobSatisfaction_{simplified_data['JobSatisfaction']}"
-            if sat_col in full_features:
-                full_features[sat_col] = 1
-                
-        if simplified_data.get("WorkLifeBalance"):
-            wlb_col = f"WorkLifeBalance_{simplified_data['WorkLifeBalance']}"
-            if wlb_col in full_features:
-                full_features[wlb_col] = 1
-                
-        if simplified_data.get("EnvironmentSatisfaction"):
-            env_col = f"EnvironmentSatisfaction_{simplified_data['EnvironmentSatisfaction']}"
-            if env_col in full_features:
-                full_features[env_col] = 1
-                
-        if simplified_data.get("MaritalStatus"):
-            marital_col = f"MaritalStatus_{simplified_data['MaritalStatus']}"
-            if marital_col in full_features:
-                full_features[marital_col] = 1
-                
-        if simplified_data.get("BusinessTravel"):
-            travel_col = f"BusinessTravel_{simplified_data['BusinessTravel']}"
-            if travel_col in full_features:
-                full_features[travel_col] = 1
-        
-        return full_features
+        return full_features, llm_context
     
     def get_user_choice(self):
         """Ask user for data source preference"""

@@ -260,6 +260,13 @@ class EmployeeEngagementAnalyzer:
             for key, value in simple_data.items():
                 if key != 'name':  # Skip name field
                     key_factors.append(f"{key.replace('_', ' ').title()}: {value}")
+            
+            # Add LLM context if available
+            if prediction_result and 'llm_context' in prediction_result:
+                llm_data = prediction_result['llm_context']
+                for key, value in llm_data.items():
+                    key_factors.append(f"{key.replace('_', ' ').title()} (Custom): {value}")
+                    
         else:
             # Extract from encoded features (for test data)
             # Department
@@ -434,7 +441,7 @@ class EmployeeEngagementAnalyzer:
                 "DistanceFromHome": 25,
                 "OverTime": "Yes",
                 "JobSatisfaction": "Low",
-                "WorkLifeBalance": "Poor",
+                "WorkLifeBalance": "Bad",
                 "EnvironmentSatisfaction": "Low",
                 "JobLevel": "Junior Level",
                 "Department": "Sales",
@@ -457,7 +464,7 @@ class EmployeeEngagementAnalyzer:
         
         # Show suggested questions
         questions = self.get_conversation_starter(sample_result['attrition_probability'])
-        print("\n🔍 Suggested Questions:")
+        print("\n💡 Suggested Questions:")
         for i, q in enumerate(questions, 1):
             print(f"  {i}. {q}")
         
@@ -532,7 +539,7 @@ class EmployeeEngagementAnalyzer:
         
         # Show suggested questions
         questions = self.get_conversation_starter(custom_result['attrition_probability'])
-        print("\n🔍 Suggested Questions:")
+        print("\n💡 Suggested Questions:")
         for i, q in enumerate(questions, 1):
             print(f"  {i}. {q}")
         
@@ -606,19 +613,6 @@ class EmployeeEngagementAnalyzer:
                     self.chat_with_llm(user_question)
                 else:
                     print("Please enter a question or type 'quit' to exit")
-                    
             except KeyboardInterrupt:
                 print("\n\n👋 Chat session interrupted!")
                 break
-
-
-# Standalone execution
-if __name__ == "__main__":
-    try:
-        analyzer = EmployeeEngagementAnalyzer()
-        analyzer.run_standalone()
-    except KeyboardInterrupt:
-        print("\n\n👋 Session interrupted by user.")
-    except Exception as e:
-        print(f"\n❌ Error: {e}")
-        print("Please check if GOOGLE_API_KEY is set in your .env file.")
