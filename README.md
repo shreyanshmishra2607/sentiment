@@ -275,26 +275,81 @@ Recommended Action: Immediate intervention required
 
 ### AI Analysis Sample
 ```markdown
-## Risk Assessment
-This employee shows a HIGH attrition risk (75.32%) due to multiple 
-concerning factors that require immediate attention.
+# Attrition Risk Assessment
 
-## Key Contributing Factors
-- **Job Satisfaction: Low** - Primary risk indicator
-- **Work-Life Balance: Poor** - Major stress factor
-- **Overtime: Excessive** - Burnout potential
-- **Career Progression: Stagnant** - Limited growth opportunities
+**Test Employee 157 presents an extremely high attrition probability (95.34%).**  
+This necessitates immediate and focused intervention. The scaled data reveals several concerning factors contributing to this high risk. Negative values across age, monthly income, years at company, total experience, and distance from home suggest the employee may be falling below average in these areas compared to their peers, potentially leading to feelings of inadequacy, under-compensation, or lack of career progression.
 
-## Recommended Actions
-1. **Immediate supervisor meeting** within 48 hours
-2. **Workload redistribution** to reduce overtime
-3. **Career development plan** discussion
-4. **Flexible work arrangement** consideration
+---
 
-## Timeline for Implementation
-- Week 1: Emergency retention meeting
-- Week 2-4: Implement immediate changes
-- Month 2-3: Monitor progress and adjust
+## 🔍 Key Contributing Factors
+
+Several psychological and workplace factors likely contribute to Test Employee 157's high attrition probability:
+
+- **Compensation and Perceived Value**  
+  The negative score for monthly income suggests potential dissatisfaction with pay relative to their experience and market value. This can lead to feelings of being undervalued and underappreciated, impacting motivation and engagement.
+
+- **Career Stagnation**  
+  Negative scores for years at company and total experience may indicate a lack of career progression opportunities. Employees need to feel they are growing and developing, and a lack of this can lead to boredom, frustration, and a desire to seek opportunities elsewhere.
+
+- **Work-Life Integration**  
+  While distance from home is relatively low, a holistic review of work-life balance (including work hours, stress levels, commute time, and overall well-being) is crucial. Even a seemingly manageable distance can become stressful when combined with other factors.
+
+- **Single Marital Status**  
+  Research suggests that single employees may experience different levels of support and work-life balance compared to married employees. This is a factor to consider in understanding the employee's overall work experience.
+
+---
+
+## ✅ Recommended Actions
+
+To mitigate the high attrition risk, a multi-pronged approach focusing on addressing the employee's psychological needs and improving their workplace experience is recommended:
+
+1. **Compensation Review**  
+   Conduct a thorough review of Test Employee 157's salary, comparing it to market rates for similar roles and experience. A salary adjustment or bonus may be necessary to demonstrate appreciation and improve their sense of value.
+
+2. **Career Development Plan**  
+   Create a structured career development plan with clear goals, timelines, and opportunities for skill enhancement and advancement. This should include regular check-ins to monitor progress and address any concerns.
+
+3. **Work-Life Balance Assessment**  
+   Conduct a confidential meeting to discuss work-life balance. Explore flexible work arrangements, stress management resources, or other support systems to improve well-being.
+
+4. **Enhanced Communication and Engagement**  
+   Regular check-ins (weekly or bi-weekly) to discuss workload, progress, and any concerns. Active listening and open communication are crucial to building trust and fostering a sense of belonging.
+
+5. **Mentorship Program**  
+   Pair the employee with a senior colleague who can provide guidance, support, and mentorship, fostering a sense of connection and belonging.
+
+---
+
+## 📅 Timeline for Implementation
+
+- **Week 1:** Initiate a compensation review and schedule a meeting to discuss career development.  
+- **Week 2:** Conduct a confidential work-life balance assessment and discuss potential solutions.  
+- **Week 3:** Implement the career development plan and introduce the mentorship program.  
+- **Ongoing:** Regular check-ins (at least bi-weekly) to monitor progress and address concerns.
+
+---
+
+## 📊 Success Metrics
+
+The effectiveness of the intervention will be measured by:
+
+- **Attrition Probability Reduction:**  
+  Track the employee's attrition probability score over the next few months. A significant decrease would indicate success.
+
+- **Employee Engagement Surveys:**  
+  Conduct regular employee engagement surveys to gauge the employee's satisfaction, motivation, and overall well-being.
+
+- **Qualitative Feedback:**  
+  Regular feedback from the employee, mentor, and manager to understand the impact of the interventions.
+
+- **Performance Improvement:**  
+  Monitor the employee’s performance to see if improvements are observed.
+
+---
+
+> This proactive approach, focused on addressing both the psychological and practical aspects of Test Employee 157's situation, will significantly increase the chances of retaining this valuable employee. The key is to demonstrate genuine care and commitment to their well-being and professional growth.
+
 ```
 
 ## 🛠️ Technical Requirements
