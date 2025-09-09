@@ -1,3 +1,5 @@
+# streamlit run .\streamlit.py
+
 import streamlit as st
 import requests
 import json
@@ -558,12 +560,12 @@ def main():
 # Footer - only show on main page, not on follow-up consultation
     if not (st.session_state.analysis_complete and 'current_analysis' in st.session_state):
         st.markdown("""
-        <div style="margin-top: 3rem; padding: 1rem; text-align: center; color: #666;">
-            <p>Employee Attrition Analysis System | Powered by AI</p>
-            <p>Developed by Shreyasnh Mishra</p>
-            <p>AI/ML Developer</p>
-            <p><small>Server: {}</small></p>
-        </div>
+<div style="margin-top: 3rem; padding: 1rem; text-align: center; color: #666; line-height: 1.2;">
+        <p style="margin: 0.2rem 0;">Employee Attrition Analysis System | Powered by AI</p>
+        <p style="margin: 0.2rem 0;">Developed by Shreyasnh Mishra</p>
+        <p style="margin: 0.2rem 0;">AI/ML Developer</p>
+        <p style="margin: 0.2rem 0;"><small>Server: {}</small></p>
+    </div>
         """.format(API_BASE_URL), unsafe_allow_html=True)
 
 if __name__ == "__main__":
