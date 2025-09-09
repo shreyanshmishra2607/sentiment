@@ -25,7 +25,7 @@ st.markdown("""
     border-bottom: 2px solid #f0f2f6;
     margin-bottom: 1rem;
 }
-
+ 
 .option-card {
     border: 1px solid red;
     border-radius: 10px;
