@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 # Configuration
-EXTERNAL_IP = "YOUR_EXTERNAL_IP_HERE"  # Replace with your GCP VM external IP
+EXTERNAL_IP = "34.63.25.219"  # Replace with your GCP VM external IP
 API_BASE_URL = f"http://{EXTERNAL_IP}:8000"
 
 # Custom CSS
@@ -65,6 +65,7 @@ st.markdown("""
     padding: 0.5rem;
     border-radius: 5px;
     margin: 0.5rem 0;
+    color:black;
 }
 </style>
 """, unsafe_allow_html=True)
